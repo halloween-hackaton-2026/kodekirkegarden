@@ -53,6 +53,32 @@ function sokIRepo({ monster, regex = false, maks_treff = MAKS_TREFF } = {}) {
   return treff.join('\n') + hale;
 }
 
+function lesFil({ fil } = {}) {
+  if (typeof fil !== 'string' || !fil.trim()) {
+    throw new Error('Mangler «fil». Send f.eks. {"fil": "src/server.js"}.');
+  }
+  const full = path.resolve(REPO, fil);
+  const relativ = path.relative(REPO, full);
+  if (!relativ || relativ.startsWith('..') || path.isAbsolute(relativ)) {
+    throw new Error(`«${fil}» må ligge i hjemsokt-repo.`);
+  }
+
+  let innhold;
+  try {
+    innhold = fs.readFileSync(full, 'utf8');
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      throw new Error(`Fant ikke «${fil}» i hjemsokt-repo. Bruk sok_i_repo for å finne riktig sti.`);
+    }
+    if (e.code === 'EISDIR') throw new Error(`«${fil}» er en mappe, ikke en fil.`);
+    throw e;
+  }
+  return innhold
+    .split(/\r?\n/)
+    .map((linje, i) => `${i + 1}: ${linje}`)
+    .join('\n');
+}
+
 export const verktøy = [
   {
     definisjon: {
@@ -90,9 +116,7 @@ export const verktøy = [
         required: ['fil'],
       },
     },
-    // TODO: path.join(REPO, fil), sjekk at resultatet fortsatt ligger under REPO
-    // (ingen ../-triks), les med fs.readFileSync og prefiks hver linje med nummer.
-    kjør: null,
+    kjør: async (input) => lesFil(input),
   },
   {
     definisjon: {
